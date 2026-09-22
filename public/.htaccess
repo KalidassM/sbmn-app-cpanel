@@ -1,0 +1,15 @@
+RewriteEngine On
+
+# Every /api/* request goes through the front controller (public/api/index.php).
+RewriteRule ^api/(.*)$ api/index.php [L,QSA]
+
+# Pretty URLs for the three standalone pages, matching the old Node app's res.sendFile() routes.
+RewriteRule ^donate$ donate.html [L]
+RewriteRule ^pay-monthly-maintenance$ pay-maintenance.html [L]
+RewriteRule ^portal$ portal.html [L]
+
+# Everything else that isn't a real file/directory falls back to the public marketing site
+# (index.html) - same catch-all the old Node app used for its hash-routed pages.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.html [L]
