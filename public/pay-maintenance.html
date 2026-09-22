@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pay Monthly Maintenance — Sri Balamurugan Nagar Welfare Association</title>
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png" />
+<link rel="icon" type="image/png" sizes="48x48" href="/assets/favicon-48x48.png" />
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <div class="auth-wrap">
+    <div class="auth-card" id="card" style="max-width:440px;">
+      <div style="text-align:center;margin-bottom:12px;">
+        <img src="/assets/sbmn-logo.png" alt="Sri Balamurugan Nagar Welfare Association logo" style="width:64px;height:64px;object-fit:cover;border-radius:50%;" />
+      </div>
+      <h1>Sri Balamurugan Nagar Welfare Association</h1>
+      <p class="sub">Pay your monthly maintenance dues </p>
+      <div id="alertBox"></div>
+      <form id="searchForm">
+        <div class="field"><label>Site No or Name</label><input type="text" id="q" required placeholder="e.g. 44,45 or Kalidass" autofocus /></div>
+        <button type="submit" style="width:100%">Find My Dues</button>
+      </form>
+      <div id="results"></div>
+    </div>
+  </div>
+
+  <script src="/js/pages/payMaintenancePublic.js"></script>
+</body>
+</html>

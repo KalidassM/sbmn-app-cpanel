@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sri Balamurugan Nagar Welfare Association</title>
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="/assets/favicon-48x48.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Catamaran:wght@500;700;800;900&family=Mukta:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#2A211B; 
+    --muted:#6B5D4F;
+    --paper:#FAF3E6;
+    --card:#FFFDF8;
+    --board:#F3E9D2;
+    --line:#E4D6B8;
+    --green:#2F5233;
+    --green-dark:#213B25;
+    --gold:#D9A404;
+    --vermilion:#A6361C;
+    --vermilion-dark:#832A16;
+    --shadow: 0 6px 20px rgba(42,33,27,0.08);
+    --header-h: 84px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Mukta',sans-serif;
+    line-height:1.6;
+    overflow-x:hidden;
+  }
+  h1,h2,h3,h4{font-family:'Catamaran',sans-serif; color:var(--green-dark); line-height:1.15;}
+  a{color:inherit;}
+  img,svg{display:block; max-width:100%;}
+  .container{max-width:1120px; margin:0 auto; padding:0 24px;}
+  :focus-visible{outline:3px solid var(--gold); outline-offset:2px;}
+
+  /* ---------- NAV ---------- */
+  header.site{
+    position:sticky; top:0; z-index:200;
+    background:var(--paper);
+    border-bottom:1px solid var(--line);
+    transition:box-shadow 0.25s ease, background 0.25s ease;
+  }
+  header.site.scrolled{
+    background:rgba(250,243,230,0.96);
+    backdrop-filter:blur(8px);
+    box-shadow:0 4px 18px rgba(42,33,27,0.09);
+  }
+  .nav-accent{height:4px; width:100%; background:linear-gradient(90deg, var(--green) 0%, var(--gold) 50%, var(--vermilion) 100%);}
+  .nav-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 20px; max-width:1264px; margin:0 auto; gap:20px;
+  }
+  .brand{display:flex; align-items:center; gap:12px; text-decoration:none; min-width:0;}
+  .brand-mark{width:62px; height:62px; flex-shrink:0; object-fit:cover;}
+  .brand-text{font-family:'Catamaran',sans-serif; font-weight:800; font-size:1.38rem; color:var(--green-dark); line-height:1.25; white-space:nowrap;}
+  .brand-text span{display:block; font-family:'Mukta',sans-serif; font-weight:600; font-size:0.98rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--vermilion);}
+
+  .nav-right{display:flex; align-items:center; gap:8px;}
+  .links{display:flex; align-items:center; gap:4px; list-style:none; flex-wrap:nowrap;}
+  .links li{flex-shrink:0;}
+  .links a{
+    font-weight:600; font-size:1rem; text-decoration:none; color:var(--ink); white-space:nowrap;
+    position:relative; padding:10px 14px; border-radius:8px; transition:background 0.18s ease, color 0.18s ease;
+  }
+  .links a:hover{background:rgba(47,82,51,0.08); color:var(--green-dark);}
+  .links a::after{
+    content:""; position:absolute; left:14px; right:14px; bottom:5px; height:2px; background:var(--vermilion);
+    transform:scaleX(0); transform-origin:left; transition:transform 0.25s ease;
+  }
+  .links a:hover::after{transform:scaleX(1);}
+  .nav-cta{
+    margin-left:8px; padding:10px 20px !important; border-radius:999px !important; background:var(--vermilion); color:#fff !important;
+    font-weight:700; box-shadow:0 3px 10px rgba(166,54,28,0.28); white-space:nowrap;
+  }
+  .nav-cta::after{display:none;}
+  .nav-cta:hover{background:var(--vermilion-dark) !important;}
+
+  .nav-cta-green{
+    margin-left:8px; padding:10px 20px !important; border-radius:999px !important; background:var(--green); color:#fff !important;
+    font-weight:700; box-shadow:0 3px 10px rgba(166,54,28,0.28); white-space:nowrap;
+  }
+  .nav-cta-green::after{display:none;}
+  .nav-cta-green:hover{background:var(--green-dark) !important;}
+
+  #authNavBtn{
+    margin-left:8px; padding:10px 18px !important; border-radius:999px !important;
+    background:transparent; border:1.5px solid var(--green) !important; color:var(--green) !important;
+    font-weight:700; font-size:1rem; cursor:pointer; white-space:nowrap; flex-shrink:0;
+  }
+  #authNavBtn::after{display:none;}
+  #authNavBtn:hover{background:var(--green) !important; color:#fff !important;}
+  #authNavBtn.logged-in{border-color:var(--vermilion) !important; color:var(--vermilion) !important;}
+  #authNavBtn.logged-in:hover{background:var(--vermilion) !important; color:#fff !important;}
+
+  /* ---------- LOGIN MODAL ---------- */
+  .login-modal-backdrop{
+    position:fixed; inset:0; background:rgba(42,33,27,0.45); z-index:400;
+    display:none; align-items:center; justify-content:center; padding:20px;
+  }
+  .login-modal-backdrop.show{display:flex;}
+  .login-modal{
+    background:var(--card); border-radius:16px; padding:28px; max-width:360px; width:100%;
+    box-shadow:var(--shadow); position:relative; display:grid; gap:14px;
+  }
+  .login-modal-close{
+    position:absolute; top:14px; right:16px; background:none; border:none; font-size:1.3rem;
+    color:var(--muted); cursor:pointer; line-height:1;
+  }
+  .login-modal-close:hover{color:var(--vermilion);}
+  .login-modal h3{font-size:1.15rem;}
+  .login-modal-sub{color:var(--muted); font-size:0.88rem; margin-top:-8px;}
+  .login-error{color:var(--vermilion); font-size:0.85rem; font-weight:600; min-height:1.1em;}
+
+  #navToggle{
+    display:none; background:none; border:none; cursor:pointer; padding:8px; flex-shrink:0;
+    width:40px; height:40px; align-items:center; justify-content:center; position:relative;
+  }
+  #navToggle span, #navToggle span::before, #navToggle span::after{
+    content:""; position:absolute; width:22px; height:2px; background:var(--green-dark); border-radius:2px;
+    transition:transform 0.25s ease, opacity 0.2s ease, top 0.25s ease;
+  }
+  #navToggle span{top:19px;}
+  #navToggle span::before{top:-7px;}
+  #navToggle span::after{top:7px;}
+  #navToggle.open span{background:transparent;}
+  #navToggle.open span::before{top:0; transform:rotate(45deg);}
+  #navToggle.open span::after{top:0; transform:rotate(-45deg);}
+
+  .nav-backdrop{
+    position:fixed; inset:0; background:rgba(42,33,27,0.35); z-index:150;
+    opacity:0; pointer-events:none; transition:opacity 0.25s ease;
+  }
+  .nav-backdrop.show{opacity:1; pointer-events:auto;}
+
+  @media (max-width:1040px){
+    .nav-right{position:fixed; top:var(--header-h); right:0; height:calc(100vh - var(--header-h)); width:min(78vw,320px); z-index:170;
+      background:var(--card); box-shadow:-8px 0 24px rgba(42,33,27,0.18);
+      transform:translateX(100%); transition:transform 0.3s ease; flex-direction:column; align-items:stretch;
+      padding:24px 20px 32px; gap:0; overflow-y:auto;
+    }
+    .nav-right.open{transform:translateX(0);}
+    .links{flex-direction:column; align-items:stretch; gap:2px; width:100%;}
+    .links a{display:block; padding:14px 0; font-size:1rem; border-radius:10px;}
+    .links a::after{display:none;}
+    .nav-cta{margin:16px 0 0; text-align:center;}
+    #authNavBtn{margin:20px 0 0 !important; width:100%; text-align:center;}
+    #navToggle{display:flex;}
+    .brand-text { font-size: 1.08rem; }
+    .brand-text span { font-size: 0.88rem; }
+    .nav-row { padding: 10px 16px; }
+  }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;
+    padding:72px 24px 40px;
+    text-align:center;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(217,164,4,0.14), transparent 45%),
+      radial-gradient(circle at 85% 10%, rgba(166,54,28,0.10), transparent 40%);
+  }
+  .eyebrow{
+    display:inline-block; font-size:0.78rem; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--vermilion); font-weight:700; margin-bottom:14px;
+  }
+  .hero h1{
+    font-size:clamp(2rem, 5vw, 3.4rem);
+    font-weight:900;
+    max-width:820px; margin:0 auto 14px;
+  }
+  .hero p.lede{
+    max-width:560px; margin:0 auto 28px; color:var(--muted); font-size:1.08rem;
+  }
+  .hero-stats{
+    display:flex; justify-content:center; gap:40px; flex-wrap:wrap; margin:0 auto 8px;
+  }
+  .stat-num{font-family:'Catamaran',sans-serif; font-weight:800; font-size:1.9rem; color:var(--green);}
+  .stat-label{font-size:0.98rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;}
+  .cta-row{display:flex; justify-content:center; gap:14px; margin-top:28px; flex-wrap:wrap;}
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:12px 24px; border-radius:999px; font-weight:700; font-size:0.95rem;
+    text-decoration:none; border:2px solid transparent; cursor:pointer; transition:transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .btn:hover{transform:translateY(-2px);}
+  .btn-primary{background:var(--vermilion); color:#fff; box-shadow:var(--shadow);}
+  .btn-primary:hover{background:var(--vermilion-dark);}
+  .btn-ghost{background:transparent; border-color:var(--green); color:var(--green);}
+  .btn-ghost:hover{background:var(--green); color:#fff;}
+
+  /* ---------- TORAN (signature divider) ---------- */
+  .toran{width:100%; height:70px; display:block; margin-top:20px;}
+  .toran path.string{stroke:#8a6d3b; stroke-width:2; fill:none;}
+
+  /* ---------- SECTION shell ---------- */
+  section{padding:64px 0;}
+  .section-head{max-width:640px; margin:0 auto 40px; text-align:center;}
+  .section-head .eyebrow{margin-bottom:8px;}
+  .section-head h2{font-size:clamp(1.6rem,3vw,2.2rem); font-weight:800;}
+  .section-head p{color:var(--muted); margin-top:10px;}
+  .alt-bg{background:var(--card); border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
+
+  /* ---------- ABOUT ---------- */
+  .about-grid{display:grid; grid-template-columns:1.1fr 0.9fr; gap:48px; align-items:center;}
+  @media (max-width:800px){.about-grid{grid-template-columns:1fr;}}
+  .about-copy p{margin-bottom:14px; color:var(--ink);}
+  .about-copy p:first-child{font-size:1.08rem;}
+  .pillars{display:grid; gap:14px;}
+  .pillar{
+    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px 20px;
+    display:flex; gap:14px; align-items:flex-start; box-shadow:var(--shadow);
+  }
+  .pillar svg{width:30px; height:30px; flex-shrink:0; color:var(--vermilion);}
+  .pillar h4{font-size:1rem; margin-bottom:4px;}
+  .pillar p{color:var(--muted); font-size:0.92rem; margin:0;}
+
+  /* ---------- NOTICE BOARD ---------- */
+  .board-wrap{
+    background:var(--board);
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:32px;
+    box-shadow: inset 0 0 0 6px rgba(255,255,255,0.35), var(--shadow);
+  }
+  .board-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; gap:16px; flex-wrap:wrap;}
+  .board-top h3{font-size:1.3rem;}
+  .notice-list{display:grid; gap:16px;}
+  .notice-card{
+    background:var(--card); border-radius:12px; padding:18px 20px; position:relative;
+    border-left:5px solid var(--vermilion);
+    box-shadow: 1px 2px 6px rgba(42,33,27,0.08);
+    transform:rotate(var(--tilt,0deg));
+  }
+  .notice-card.pinned{border-left-color:var(--gold);}
+  .notice-card .pin{
+    position:absolute; top:-10px; left:16px; width:20px; height:20px; border-radius:50%;
+    background:var(--vermilion); box-shadow:0 2px 4px rgba(0,0,0,0.3);
+  }
+  .notice-card.pinned .pin{background:var(--gold);}
+  .notice-meta{display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  .notice-date{font-size:0.78rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;}
+  .notice-card h4{font-size:1.05rem; margin:4px 0 6px;}
+  .notice-card p{color:var(--ink); font-size:0.94rem;}
+  .notice-actions{margin-top:10px; display:flex; gap:14px;}
+  .link-btn{background:none; border:none; color:var(--muted); font-size:0.8rem; font-weight:700; cursor:pointer; text-decoration:underline; padding:0;}
+  .link-btn:hover{color:var(--vermilion);}
+  .empty-state{color:var(--muted); text-align:center; padding:24px; font-style:italic;}
+
+  /* ---------- FORMS (shared style) ---------- */
+  .field-row{display:grid; gap:14px; grid-template-columns:1fr 1fr;}
+  @media (max-width:640px){.field-row{grid-template-columns:1fr;}}
+  .field{display:flex; flex-direction:column; gap:6px;}
+  .field label{font-size:0.82rem; font-weight:700; color:var(--green-dark);}
+  .field input, .field textarea, .field select{
+    padding:10px 12px; border-radius:8px; border:1.5px solid var(--line); background:#fff;
+    font-family:'Mukta',sans-serif; font-size:0.95rem; color:var(--ink);
+  }
+  .field input:focus, .field textarea:focus, .field select:focus{border-color:var(--green);}
+  .form-toggle-btn{margin-top:6px;}
+  .inline-form{
+    margin-top:22px; background:var(--card); border:1px dashed var(--line); border-radius:14px;
+    padding:20px; display:none; gap:14px;
+  }
+  .inline-form.open{display:grid;}
+  .inline-form h4{font-size:1rem; margin-bottom:4px;}
+  .form-buttons{display:flex; gap:10px; margin-top:4px;}
+  .btn-small{padding:9px 18px; font-size:0.85rem; border-radius:999px;}
+
+  /* ---------- EVENTS ---------- */
+  .events-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:20px;}
+  .event-card{
+    background:var(--card); border:1px solid var(--line); border-radius:16px; overflow:hidden;
+    box-shadow:var(--shadow); display:flex; flex-direction:column;
+  }
+  .event-date-badge{
+    background:var(--green); color:#fff; padding:14px 18px; display:flex; align-items:baseline; gap:8px;
+  }
+  .event-date-badge .day{font-family:'Catamaran',sans-serif; font-weight:900; font-size:1.6rem;}
+  .event-date-badge .month{font-size:0.85rem; text-transform:uppercase; letter-spacing:0.06em;}
+  .event-body{padding:18px 20px; flex:1; display:flex; flex-direction:column; gap:8px;}
+  .event-body h4{font-size:1.08rem;}
+  .event-venue{font-size:0.82rem; color:var(--vermilion); font-weight:700;}
+  .event-body p{color:var(--muted); font-size:0.92rem; flex:1;}
+  .event-actions{display:flex; gap:14px;}
+
+  /* ---------- COMMITTEE ---------- */
+  .committee-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:20px;}
+  .member-card{
+    background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 18px; text-align:center;
+    box-shadow:var(--shadow); position:relative;
+  }
+  .avatar-ring{
+    width:74px; height:74px; border-radius:50%; margin:0 auto 12px; display:flex; align-items:center; justify-content:center;
+    background:conic-gradient(var(--gold), var(--vermilion), var(--green), var(--gold));
+    padding:3px;
+  }
+  .avatar-ring .avatar-inner{
+    width:100%; height:100%; border-radius:50%; background:var(--card);
+    display:flex; align-items:center; justify-content:center; font-family:'Catamaran',sans-serif; font-weight:800; font-size:1.3rem; color:var(--green-dark);
+  }
+  .avatar-ring .avatar-photo{
+    width:100%; height:100%; border-radius:50%; object-fit:cover; display:block;
+  }
+  .member-card h4{font-size:1rem; margin-bottom:2px;}
+  .member-role{color:var(--vermilion); font-size:0.82rem; font-weight:700; text-transform:uppercase; letter-spacing:0.03em;}
+  .member-mobile{display:block; margin-top:4px; font-size:0.85rem; color:var(--muted); text-decoration:none;}
+  .member-mobile:hover{color:var(--green); text-decoration:underline;}
+  .member-card .remove-x{
+    position:absolute; top:10px; right:12px; background:none; border:none; color:var(--muted); cursor:pointer; font-size:1rem;
+  }
+  .member-card .remove-x:hover{color:var(--vermilion);}
+  .member-actions{margin-top:10px;}
+
+  /* ---------- GALLERY (illustrative, no photos) ---------- */
+  .gallery-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:18px;}
+  .gallery-tile{
+    background:var(--card); border:1px solid var(--line); border-radius:16px; padding:26px 20px; text-align:center;
+    box-shadow:var(--shadow);
+  }
+  .gallery-tile svg{width:52px; height:52px; margin:0 auto 14px; color:var(--green);}
+  .gallery-tile h4{font-size:0.98rem; margin-bottom:4px;}
+  .gallery-tile p{color:var(--muted); font-size:0.85rem;}
+
+  /* ---------- CONTACT ---------- */
+  .contact-grid{display:grid; grid-template-columns:0.9fr 1.1fr; gap:40px;}
+  @media (max-width:800px){.contact-grid{grid-template-columns:1fr;}}
+  .info-card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:26px; box-shadow:var(--shadow);}
+  .info-row{display:flex; gap:14px; margin-bottom:18px; align-items:flex-start;}
+  .info-row svg{width:22px; height:22px; color:var(--vermilion); flex-shrink:0; margin-top:2px;}
+  .info-row h4{font-size:0.92rem; margin-bottom:2px;}
+  .info-row p{color:var(--muted); font-size:0.9rem;}
+  .contact-form{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:26px; box-shadow:var(--shadow); display:grid; gap:14px;}
+  .success-msg{
+    display:none; background:#eaf2ea; border:1px solid var(--green); color:var(--green-dark);
+    padding:12px 16px; border-radius:10px; font-size:0.9rem; font-weight:600;
+  }
+  .success-msg.show{display:block;}
+
+  /* ---------- FOOTER ---------- */
+  footer{background:var(--green-dark); color:#EFE7D2; padding:44px 0 24px;}
+  .footer-grid{display:flex; justify-content:space-between; gap:32px; flex-wrap:wrap;}
+  footer h4{color:#fff; font-size:1rem; margin-bottom:12px;}
+  footer p, footer a{color:#C9C0AA; font-size:0.88rem; text-decoration:none;}
+  footer a:hover{color:var(--gold);}
+  .footer-bottom{
+    margin-top:32px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.12);
+    text-align:center; font-size:0.8rem; color:#A79E88;
+  }
+
+  /* ---------- reveal on scroll ---------- */
+  .reveal{opacity:0; transform:translateY(18px); transition:opacity 0.6s ease, transform 0.6s ease;}
+  .reveal.in{opacity:1; transform:translateY(0);}
+  @media (prefers-reduced-motion: reduce){
+    .reveal{opacity:1; transform:none; transition:none;}
+    html{scroll-behavior:auto;}
+  }
+</style>
+</head>
+<body>
+
+<header class="site" id="siteHeader">
+  <div class="nav-row">
+    <a href="#" class="brand">
+      <img src="/assets/sbmn-logo.png" alt="Sri Balamurugan Nagar Welfare Association logo" class="brand-mark">
+      <div class="brand-text">Sri Balamurugan Nagar<span>Welfare Association</span></div>
+    </a>
+    <div class="nav-right" id="navRight">
+      <nav>
+        <ul class="links" id="navLinks">
+          <li><a href="#about">About</a></li>
+          <li><a href="#notices">Notices</a></li>
+          <li><a href="#events">Events</a></li>
+          <li><a href="#committee">Committee</a></li>
+          <li><a href="#gallery">Gallery</a></li>
+          <li><a href="#contact">Contact</a></li>
+          <li><a href="/pay-monthly-maintenance" class="nav-cta-green">Pay Maintenance</a></li>
+          <li><a href="/donate" class="nav-cta">Donate</a></li>
+        </ul>
+      </nav>
+    </div>
+    <button id="navToggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+  <div class="nav-accent"></div>
+</header>
+<div class="nav-backdrop" id="navBackdrop"></div>
+
+<div class="login-modal-backdrop" id="loginModalBackdrop">
+  <div class="login-modal">
+    <button class="login-modal-close" id="loginModalClose" aria-label="Close login form">&times;</button>
+    <h3>Committee Login</h3>
+    <p class="login-modal-sub">Sign in with your portal account to post notices and manage events.</p>
+    <form id="loginForm">
+      <div class="field">
+        <label for="loginUsername">Username</label>
+        <input type="text" id="loginUsername" required autocomplete="username">
+      </div>
+      <div class="field">
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" required autocomplete="current-password">
+      </div>
+      <div class="login-error" id="loginError"></div>
+      <div class="form-buttons">
+        <button type="submit" class="btn btn-primary btn-small">Login</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<section class="hero">
+  <div class="container">
+    <span class="eyebrow">SERVING OUR NEIGHBOURHOOD, TOGETHER</span>
+    <h1>Sri Balamurugan Nagar Welfare Association</h1>
+    <p class="lede">Bringing residents together to build a cleaner, safer, and more connected neighbourhood — through shared responsibility, open communication, and community participation.</p>
+    <div class="hero-stats">
+      <div><div class="stat-num" id="statHouseholds">—</div><div class="stat-label">Member households</div></div>
+      <div><div class="stat-num" id="statNotices">—</div><div class="stat-label">Active notices</div></div>
+      <div><div class="stat-num" id="statEvents">—</div><div class="stat-label">Upcoming events</div></div>
+      <div><div class="stat-num">Est. 2024</div><div class="stat-label">Serving since</div></div>
+    </div>
+    <div class="cta-row">
+      <a href="#notices" class="btn btn-primary">View Notice Board</a>
+      <a href="#contact" class="btn btn-ghost">Become a Member</a>
+    </div>
+  </div>
+  <svg class="toran" viewBox="0 0 1200 70" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path class="string" d="M0,6 Q600,50 1200,6"></path>
+    <g id="toranLeaves"></g>
+  </svg>
+</section>
+
+<section id="about">
+  <div class="container about-grid reveal">
+    <div class="about-copy">
+      <span class="eyebrow">About Us</span>
+      <h2>By Residents, for Our Community</h2>
+      <p>Sri Balamurugan Nagar Welfare Association brings residents together to care for our neighbourhood and improve everyday life in the Nagar.</p>
+      <p>We work closely with residents and local authorities on matters such as street lighting, roads, drainage, waste management, water supply, safety, and other shared concerns.</p>
+      <p>Beyond civic needs, the association helps build a stronger community through neighbourhood events, welfare initiatives, regular meetings, and open communication. Every household is encouraged to participate, share concerns, contribute ideas, and be part of shaping a better Nagar.</p>
+    </div>
+    <div class="pillars">
+      <div class="pillar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 21V9l8-6 8 6v12"/><path d="M9 21v-8h6v8"/></svg>
+        <div><h4>Civic Upkeep</h4><p>Working with local authorities on streetlights, drainage, roads, waste management, and other neighbourhood infrastructure.</p></div>
+      </div>
+      <div class="pillar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+        <div><h4>Community Welfare</h4><p>Supporting resident well-being, community celebrations, neighbourhood initiatives, and activities that bring people together.</p></div>
+      </div>
+      <div class="pillar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="9"/></svg>
+        <div><h4>Open & Transparent</h4><p>Keeping residents informed through notices, meeting updates, decisions, and important association information.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="notices" class="alt-bg">
+  <div class="container reveal">
+    <div class="section-head">
+      <span class="eyebrow">Notice Board</span>
+      <h2>Updates from the Nagar</h2>
+      <p>Find important announcements and information shared by the committee — from maintenance notices and meeting updates to community guidelines and general reminders. <br/> <br/> Check here regularly to stay informed about matters concerning the Nagar.</p>
+    </div>
+    <div class="board-wrap">
+      <div class="board-top">
+        <h3>Latest Notices</h3>
+        <button class="btn btn-primary btn-small form-toggle-btn" id="showNoticeForm" style="display:none;">+ Post a Notice</button>
+      </div>
+      <form class="inline-form" id="noticeForm">
+        <h4>New notice</h4>
+        <div class="field">
+          <label for="noticeTitle">Title</label>
+          <input type="text" id="noticeTitle" required maxlength="80" placeholder="e.g. Water supply maintenance on Sunday">
+        </div>
+        <div class="field">
+          <label for="noticeBody">Details</label>
+          <textarea id="noticeBody" rows="3" required maxlength="400" placeholder="Add the details residents need to know"></textarea>
+        </div>
+        <div class="field" style="max-width:220px;">
+          <label><input type="checkbox" id="noticePin"> Pin to top (important)</label>
+        </div>
+        <div class="form-buttons">
+          <button type="submit" class="btn btn-primary btn-small">Publish Notice</button>
+          <button type="button" class="btn btn-ghost btn-small" id="cancelNotice">Cancel</button>
+        </div>
+      </form>
+      <div class="notice-list" id="noticeList"></div>
+    </div>
+  </div>
+</section>
+
+<section id="events">
+  <div class="container reveal">
+    <div class="section-head">
+      <span class="eyebrow">Events Calendar</span>
+      <h2>Coming Up in the Neighbourhood</h2>
+      <p>See what’s happening around the Nagar — festivals, celebrations, community gatherings, clean-up drives, activities, and more. <br/> Explore upcoming events, save the dates, and join your neighbours in making our community more connected and vibrant.</p>
+    </div>
+    <div style="text-align:center; margin-bottom:28px;">
+      <button class="btn btn-primary btn-small form-toggle-btn" id="showEventForm" style="display:none;">+ Add an Event</button>
+    </div>
+    <form class="inline-form" id="eventForm" style="max-width:640px; margin:0 auto 32px;">
+      <h4>New event</h4>
+      <div class="field-row">
+        <div class="field">
+          <label for="eventTitle">Event name</label>
+          <input type="text" id="eventTitle" required maxlength="60" placeholder="e.g. Community Pongal Celebration">
+        </div>
+        <div class="field">
+          <label for="eventDate">Date</label>
+          <input type="date" id="eventDate" required>
+        </div>
+      </div>
+      <div class="field">
+        <label for="eventVenue">Venue</label>
+        <input type="text" id="eventVenue" maxlength="80" placeholder="e.g. Association Community Hall">
+      </div>
+      <div class="field">
+        <label for="eventDesc">Description</label>
+        <textarea id="eventDesc" rows="2" maxlength="300" placeholder="Brief description for residents"></textarea>
+      </div>
+      <div class="form-buttons">
+        <button type="submit" class="btn btn-primary btn-small">Add Event</button>
+        <button type="button" class="btn btn-ghost btn-small" id="cancelEvent">Cancel</button>
+      </div>
+    </form>
+    <div class="events-grid" id="eventList"></div>
+  </div>
+</section>
+
+<section id="committee" class="alt-bg">
+  <div class="container reveal">
+    <div class="section-head">
+      <span class="eyebrow">Our Committee</span>
+      <h2>Meet Your Community Committee</h2>
+      <p>Get to know the residents elected to represent our Nagar and help keep our community running smoothly.
+The committee works together on community matters, resident concerns, neighbourhood initiatives, and decisions that help make the Nagar a better place for everyone.</p>
+    </div>
+    <div style="text-align:center; margin-bottom:28px;">
+      <button class="btn btn-primary btn-small form-toggle-btn" id="showMemberForm" style="display:none;">+ Add Committee Member</button>
+    </div>
+    <form class="inline-form" id="memberForm" style="max-width:520px; margin:0 auto 32px;">
+      <h4>New committee member</h4>
+      <div class="field">
+        <label for="memberSelect">Member</label>
+        <select id="memberSelect" required></select>
+      </div>
+      <div class="field">
+        <label for="memberRole">Designation</label>
+        <input type="text" id="memberRole" required maxlength="40" placeholder="e.g. Joint Secretary">
+      </div>
+      <div class="field">
+        <label for="memberPhoto">Photo (optional)</label>
+        <input type="file" id="memberPhoto" accept="image/*">
+        <span id="memberPhotoHint" style="display:none; font-size:0.82rem; color:var(--muted);">Leave blank to keep the current photo.</span>
+      </div>
+      <div class="form-buttons">
+        <button type="submit" class="btn btn-primary btn-small">Add Member</button>
+        <button type="button" class="btn btn-ghost btn-small" id="cancelMember">Cancel</button>
+      </div>
+    </form>
+    <div class="committee-grid" id="committeeList"></div>
+  </div>
+</section>
+
+<section id="gallery">
+  <div class="container reveal">
+    <div class="section-head">
+      <span class="eyebrow">Life in the Nagar</span>
+      <h2>Together Beyond Our Doorsteps</h2>
+      <p>Our Nagar is more than a place to live — it’s a community we build together. Throughout the year, residents come together to celebrate, contribute, connect, and care for our neighbourhood.</p>
+    </div>
+    <div class="gallery-grid">
+      <div class="gallery-tile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2v6M12 16v6M4 12h6M14 12h6"/><circle cx="12" cy="12" r="3"/></svg>
+        <h4>Festival Celebrations</h4><p>Coming together to celebrate festivals, traditions, and special occasions as one community.</p>
+      </div>
+      <div class="gallery-tile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 21h18M5 21V10l7-6 7 6v11"/></svg>
+        <h4>Neighbourhood Clean-ups</h4><p>Resident-led efforts to keep our streets and shared spaces clean and welcoming.</p>
+      </div>
+      <div class="gallery-tile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 21s-7-4.4-9.5-8.8C.6 8.4 3 5 6.5 5c2 0 3.4 1.1 4.5 2.6C12.1 6.1 13.5 5 15.5 5 19 5 21.4 8.4 21.5 12.2 19 16.6 12 21 12 21Z"/></svg>
+        <h4>Senior Citizen Support</h4><p>Connecting with and supporting senior residents through community care and assistance.</p>
+      </div>
+      <div class="gallery-tile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M9 4v16"/></svg>
+        <h4>Resident Meetings</h4><p>Open discussions where residents can share ideas, raise concerns, and stay involved.</p>
+      </div>
+      <div class="gallery-tile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3c4 3 7 6 7 10a7 7 0 0 1-14 0c0-4 3-7 7-10Z"/></svg>
+        <h4>Green Initiatives</h4><p>Tree planting and environmental activities that help create a greener, healthier Nagar.</p>
+      </div>
+      <div class="gallery-tile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+        <h4>Sports & Recreation</h4><p>Games and activities that bring children, youth, and families together.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="contact" class="alt-bg">
+  <div class="container reveal">
+    <div class="section-head">
+      <span class="eyebrow">Get in Touch</span>
+      <h2>Reach the Association</h2>
+      <p>Have a concern, an idea, or want to join as a member household? Write to us.</p>
+    </div>
+    <div class="contact-grid">
+      <div class="info-card">
+        <div class="info-row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 6-9 12-9 12S3 16 3 10a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          <div><h4>Office Address</h4><p id="officeAddress">Site No #44, 45, Sri Balamurugan Nagar, Kondaiyampalayam Road, Keeranatham, Coimbatore - 641035</p></div>
+        </div>
+        <div class="info-row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.4 2.1L8 9.9a16 16 0 0 0 6 6l1.4-1.4a2 2 0 0 1 2.1-.4c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.8 2Z"/></svg>
+          <div><h4>Phone</h4><p id="officePhone">+91 96885 02997</p></div>
+        </div>
+        <div class="info-row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>
+          <div><h4>Email</h4><p id="officeEmail">sribalamurugannagar@gmail.com</p></div>
+        </div>
+        <div class="info-row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+          <div><h4>Office Hours</h4><p id="officeHours">Every Sunday, 5 PM – 6 PM, Park Site</p></div>
+        </div>
+      </div>
+      <form class="contact-form" id="contactForm">
+        <div class="field-row">
+          <div class="field"><label for="cName">Name</label><input type="text" id="cName" required></div>
+          <div class="field"><label for="cHouse">House / Plot No.</label><input type="text" id="cHouse" placeholder="e.g. Plot 42"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="cPhone">Phone</label><input type="tel" id="cPhone" required></div>
+          <div class="field"><label for="cEmail">Email</label><input type="email" id="cEmail"></div>
+        </div>
+        <div class="field">
+          <label for="cMsg">Message</label>
+          <textarea id="cMsg" rows="4" required placeholder="Tell us how we can help"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Send Message</button>
+        <div class="success-msg" id="contactSuccess">Thank you — your message has been recorded. The committee will get back to you soon.</div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container footer-grid">
+    <div>
+      <h4>Sri Balamurugan Nagar Welfare Association</h4>
+      <p style="max-width:280px;">Working together for a cleaner, safer, and more connected neighbourhood.</p>
+    </div>
+    <div>
+      <h4>Quick Links</h4>
+      <p><a href="#notices">Notice Board</a></p>
+      <p><a href="#events">Events</a></p>
+      <p><a href="#committee">Committee</a></p>
+      <p><a href="/donate">Donate</a></p>
+    </div>
+    <div>
+      <h4>Contact</h4>
+      <p id="footerEmail">sribalamurugannagar@gmail.com</p>
+      <p id="footerPhone">+91 96885 02997</p>
+    </div>
+  </div>
+  <div class="footer-bottom">&copy; <span id="year"></span> Sri Balamurugan Nagar Welfare Association. All rights reserved.</div>
+</footer>
+
+<script src="/js/api.js"></script>
+<script src="/js/pages/publicSite.js"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "name": "sbmn-app-cpanel",
+  "version": "1.0.0",
+  "description": "Sri Balamurugan Nagar Welfare Association (cPanel hosting, WhatsApp Business API)",
+  "main": "server/index.js",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.11.3",
+    "qrcode": "^1.5.4",
+    "razorpay": "^2.9.8"
+  }
+}
