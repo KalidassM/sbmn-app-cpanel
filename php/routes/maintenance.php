@@ -78,7 +78,7 @@ Router::get('/maintenance/reminders', function ($params, $body, $query) {
 
     $rows = db_all(
         "SELECT mp.id, mp.amount_due, mp.amount_paid, mp.status, mp.last_reminder_sent_at, mp.last_reminder_error,
-                m.name AS member_name, m.site_no, m.phone
+                m.name AS member_name, m.site_no, m.phone, m.email
          FROM maintenance_payments mp
          JOIN members m ON m.id = mp.member_id
          WHERE mp.month = ? AND mp.year = ? AND mp.status != 'paid' AND m.status = 'active'
@@ -86,6 +86,13 @@ Router::get('/maintenance/reminders', function ($params, $body, $query) {
         [$month, $year]
     );
     Response::json($rows);
+});
+
+// Sends (right now, bypassing every schedule guard) just this one member's reminder - for
+// nudging a single straggler without resending to everyone else who's already been reminded.
+Router::post('/maintenance/reminders/:id/send', function ($params) {
+    require_admin();
+    Response::json(send_single_reminder((int) $params['id']));
 });
 
 // Manually re-runs today's reminder send, bypassing the day/time/already-sent guards - for

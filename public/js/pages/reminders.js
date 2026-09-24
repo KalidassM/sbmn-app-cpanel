@@ -19,8 +19,8 @@ window.RemindersPage = {
           </div>
         </div>
         <table>
-          <thead><tr><th>Site No</th><th>Member</th><th>Phone</th><th>Amount Due</th><th>Status</th><th>Reminder</th></tr></thead>
-          <tbody id="reminderRows"><tr><td colspan="6">Loading…</td></tr></tbody>
+          <thead><tr><th>Site No</th><th>Member</th><th>Phone</th><th>Amount Due</th><th>Status</th><th>Reminder</th><th></th></tr></thead>
+          <tbody id="reminderRows"><tr><td colspan="7">Loading…</td></tr></tbody>
         </table>
       </div>
     `;
@@ -89,7 +89,7 @@ window.RemindersPage = {
     }
 
     if (!members.length) {
-      rows.innerHTML = `<tr class="empty-row"><td colspan="6">Everyone has paid for ${Util.monthName(month)} ${year}.</td></tr>`;
+      rows.innerHTML = `<tr class="empty-row"><td colspan="7">Everyone has paid for ${Util.monthName(month)} ${year}.</td></tr>`;
       return;
     }
 
@@ -111,8 +111,33 @@ window.RemindersPage = {
           <td>${Util.money(remaining)}</td>
           <td><span class="badge ${m.status}">${m.status}</span></td>
           <td>${reminderCell}</td>
+          <td><button type="button" class="small secondary" data-send="${m.id}">Send</button></td>
         </tr>`;
       })
       .join('');
+
+    rows.querySelectorAll('[data-send]').forEach((btn) =>
+      btn.addEventListener('click', () => this.sendOne(btn))
+    );
+  },
+
+  async sendOne(btn) {
+    const dueId = btn.dataset.send;
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Sending…';
+    try {
+      const result = await Api.post(`/maintenance/reminders/${dueId}/send`);
+      if (result.sent) {
+        this.showAlert(`Reminder sent to ${result.name}.`, 'success');
+      } else {
+        this.showAlert(`Could not send to ${result.name}: ${result.error}`);
+      }
+      await this.load();
+    } catch (err) {
+      this.showAlert(err.message);
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
   },
 };
