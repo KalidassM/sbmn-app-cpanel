@@ -46,13 +46,14 @@ Router::post('/users', function ($params, $body) {
             'description' => "Created user {$row['username']} (role: {$row['role']})",
         ]);
 
-        $member = $row['member_id'] ? db_get('SELECT name, phone FROM members WHERE id = ?', [$row['member_id']]) : null;
+        $member = $row['member_id'] ? db_get('SELECT name, phone, email FROM members WHERE id = ?', [$row['member_id']]) : null;
         $phone = users_resolve_account_phone($row['username'], $member);
-        if ($phone) {
+        if ($phone || !empty($member['email'])) {
             $name = $member['name'] ?? $row['username'];
             notify_member(
-                ['phone' => $phone],
-                "Hi $name, your login account for " . app_name() . " has been created. Username: {$row['username']}, Password: $password. Please log in at " . portal_url() . ' and change your password.' . "\n\n" . sign_off()
+                ['phone' => $phone, 'email' => $member['email'] ?? null],
+                "Hi $name, your login account for " . app_name() . " has been created. Username: {$row['username']}, Password: $password. Please log in at " . portal_url() . ' and change your password.' . "\n\n" . sign_off(),
+                'Your login account for ' . app_name()
             );
         }
 

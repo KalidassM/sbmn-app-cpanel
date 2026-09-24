@@ -9,7 +9,7 @@
 // Returns ['action' => 'created' | 'upgraded' | 'skipped', 'username' => ..., 'reason' => ...].
 function ensure_core_member_account(int $memberId): array
 {
-    $member = db_get('SELECT id, name, phone FROM members WHERE id = ?', [$memberId]);
+    $member = db_get('SELECT id, name, phone, email FROM members WHERE id = ?', [$memberId]);
     if (!$member) {
         return ['action' => 'skipped', 'reason' => 'Member not found'];
     }
@@ -22,7 +22,8 @@ function ensure_core_member_account(int $memberId): array
         db_run('UPDATE users SET role = ? WHERE id = ?', ['admin', $existing['id']]);
         notify_member(
             $member,
-            "Hi {$member['name']}, you've been made a Core Member of " . app_name() . ". Your existing account ({$existing['username']}) now has admin access. Visit the portal: " . portal_url() . "\n\n" . sign_off()
+            "Hi {$member['name']}, you've been made a Core Member of " . app_name() . ". Your existing account ({$existing['username']}) now has admin access. Visit the portal: " . portal_url() . "\n\n" . sign_off(),
+            'You now have admin access on ' . app_name()
         );
         return ['action' => 'upgraded', 'username' => $existing['username']];
     }
@@ -41,7 +42,8 @@ function ensure_core_member_account(int $memberId): array
         );
         notify_member(
             $member,
-            "Hi {$member['name']}, you've been added as a Core Member of " . app_name() . " with admin portal access. Username: $username, Password: $password. Please log in at " . portal_url() . " and change your password.\n\n" . sign_off()
+            "Hi {$member['name']}, you've been added as a Core Member of " . app_name() . " with admin portal access. Username: $username, Password: $password. Please log in at " . portal_url() . " and change your password.\n\n" . sign_off(),
+            'Your Core Member admin account for ' . app_name()
         );
         return ['action' => 'created', 'username' => $username];
     } catch (Throwable $e) {

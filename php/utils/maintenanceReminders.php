@@ -18,8 +18,8 @@ function now_ist(): array
 
 function send_daily_reminders(bool $force = false): array
 {
-    if (!wa_is_connected()) {
-        return ['skipped' => true, 'reason' => 'WhatsApp is not configured. Set WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID.'];
+    if (!wa_is_connected() && !is_email_configured()) {
+        return ['skipped' => true, 'reason' => 'Neither WhatsApp nor email is configured. Set WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID, or a Resend API key in General Settings.'];
     }
 
     $settings = db_get('SELECT reminders_last_sent_date, app_name, reminder_days, reminder_time FROM general_settings WHERE id = 1');
@@ -48,7 +48,7 @@ function send_daily_reminders(bool $force = false): array
     ensure_dues_generated($month, $year);
 
     $dues = db_all(
-        "SELECT mp.id, mp.amount_due, mp.amount_paid, mp.month, mp.year, m.name, m.phone, m.site_no
+        "SELECT mp.id, mp.amount_due, mp.amount_paid, mp.month, mp.year, m.name, m.phone, m.email, m.site_no
          FROM maintenance_payments mp
          JOIN members m ON m.id = mp.member_id
          WHERE mp.month = ? AND mp.year = ? AND mp.status != 'paid' AND m.status = 'active'",
@@ -60,24 +60,47 @@ function send_daily_reminders(bool $force = false): array
     $skippedNoPhone = [];
 
     foreach ($dues as $due) {
-        if (empty($due['phone']) || !preg_replace('/\D/', '', $due['phone'])) {
+        $hasPhone = !empty($due['phone']) && preg_replace('/\D/', '', $due['phone']);
+        $hasEmail = !empty($due['email']);
+        if (!$hasPhone && !$hasEmail) {
             $skippedNoPhone[] = $due['name'];
-            db_run('UPDATE maintenance_payments SET last_reminder_error = ? WHERE id = ?', ['No phone number on file', $due['id']]);
+            db_run('UPDATE maintenance_payments SET last_reminder_error = ? WHERE id = ?', ['No phone number or email on file', $due['id']]);
             continue;
         }
+
         $remaining = (float) $due['amount_due'] - (float) $due['amount_paid'];
         $link = base_url() . '/pay-monthly-maintenance?q=' . urlencode($due['site_no'] ?: $due['name']);
 
         $message = "*Hi {$due['name']},*  This is a reminder that your maintenance due of *₹$remaining " .
             "for " . MONTH_NAMES[$due['month']] . " {$due['year']} (Site No " . ($due['site_no'] ?: '-') . ")* is still pending.\n\n" .
             "*Pay Now:* $link\n\n" . sign_off();
-        try {
-            wa_send_message($due['phone'], $message);
+
+        $anySent = false;
+        $lastError = null;
+
+        if ($hasPhone && wa_is_connected()) {
+            try {
+                wa_send_message($due['phone'], $message);
+                $anySent = true;
+            } catch (Throwable $e) {
+                $lastError = $e->getMessage();
+            }
+        }
+        if ($hasEmail && is_email_configured()) {
+            try {
+                send_mail($due['email'], 'Maintenance due reminder - ' . app_name(), text_to_html($message));
+                $anySent = true;
+            } catch (Throwable $e) {
+                $lastError = $lastError ? "$lastError; {$e->getMessage()}" : $e->getMessage();
+            }
+        }
+
+        if ($anySent) {
             $sent[] = $due['name'];
             db_run("UPDATE maintenance_payments SET last_reminder_sent_at = NOW(), last_reminder_error = NULL WHERE id = ?", [$due['id']]);
-        } catch (Throwable $e) {
-            $failed[] = ['name' => $due['name'], 'error' => $e->getMessage()];
-            db_run('UPDATE maintenance_payments SET last_reminder_error = ? WHERE id = ?', [$e->getMessage(), $due['id']]);
+        } else {
+            $failed[] = ['name' => $due['name'], 'error' => $lastError ?? 'No channel could send'];
+            db_run('UPDATE maintenance_payments SET last_reminder_error = ? WHERE id = ?', [$lastError ?? 'No channel could send', $due['id']]);
         }
     }
 

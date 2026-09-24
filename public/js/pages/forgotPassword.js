@@ -5,7 +5,7 @@ window.ForgotPasswordPage = {
       <div class="auth-wrap">
         <div class="auth-card">
           <h1>Reset Your Password</h1>
-          <p class="sub">We'll send a one-time code to your WhatsApp number on file</p>
+          <p class="sub">We'll send a one-time code to your WhatsApp number and/or email on file</p>
           <div id="fpAlert"></div>
 
           <form id="fpRequestForm">
@@ -53,9 +53,10 @@ window.ForgotPasswordPage = {
       const btn = requestForm.querySelector('button[type=submit]');
       btn.disabled = true;
       try {
-        await Api.post('/auth/forgot-password', { username });
+        const result = await Api.post('/auth/forgot-password', { username });
         this.username = username;
-        alertBox.innerHTML = `<div class="alert success">A reset code has been sent to your WhatsApp number.</div>`;
+        const via = (result.sentVia || []).join(' and ') || 'WhatsApp';
+        alertBox.innerHTML = `<div class="alert success">A reset code has been sent via ${Util.escapeHtml(via)}.</div>`;
         requestForm.style.display = 'none';
         resetForm.style.display = '';
       } catch (err) {

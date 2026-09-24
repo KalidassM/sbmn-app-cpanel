@@ -33,16 +33,17 @@ function notify_admin_of_payment(array $due): void
     }
 }
 
-// Sends a WhatsApp success confirmation to both the paying member and the association's own
-// contact number, for one or more dues paid together. Never throws.
+// Sends a payment success confirmation to the paying member (WhatsApp + email, whichever are
+// configured and on file) and a WhatsApp-only heads-up to the association's own contact number,
+// for one or more dues paid together. Never throws.
 function notify_payment_whatsapp(array $dues): void
 {
     try {
-        if (!$dues || !wa_is_connected()) {
+        if (!$dues) {
             return;
         }
 
-        $member = db_get('SELECT name, site_no, phone FROM members WHERE id = ?', [$dues[0]['member_id']]);
+        $member = db_get('SELECT name, site_no, phone, email FROM members WHERE id = ?', [$dues[0]['member_id']]);
         if (!$member) {
             return;
         }
@@ -53,15 +54,23 @@ function notify_payment_whatsapp(array $dues): void
         $monthWord = count($dues) > 1 ? count($dues) . ' months' : '1 month';
         $signature = sign_off();
 
-        if (!empty($member['phone'])) {
+        $memberText = "Hi {$member['name']}, your payment of ₹$totalPaid for $monthsText has been received. Thank you!\n\n$signature";
+        if (!empty($member['phone']) && wa_is_connected()) {
             try {
-                wa_send_message($member['phone'], "Hi {$member['name']}, your payment of ₹$totalPaid for $monthsText has been received. Thank you!\n\n$signature");
+                wa_send_message($member['phone'], $memberText);
             } catch (Throwable $e) {
                 error_log('Payment WhatsApp to member failed: ' . $e->getMessage());
             }
         }
+        if (!empty($member['email']) && is_email_configured()) {
+            try {
+                send_mail($member['email'], 'Payment received - ' . app_name(), text_to_html($memberText));
+            } catch (Throwable $e) {
+                error_log('Payment email to member failed: ' . $e->getMessage());
+            }
+        }
 
-        if (!empty($settings['phone_number'])) {
+        if (!empty($settings['phone_number']) && wa_is_connected()) {
             try {
                 wa_send_message($settings['phone_number'], "Payment received: ₹$totalPaid from {$member['name']} (Site No " . ($member['site_no'] ?: '-') . ") for $monthsText ($monthWord).\n\n$signature");
             } catch (Throwable $e) {
@@ -69,25 +78,30 @@ function notify_payment_whatsapp(array $dues): void
             }
         }
     } catch (Throwable $e) {
-        error_log('Payment WhatsApp notification failed: ' . $e->getMessage());
+        error_log('Payment notification failed: ' . $e->getMessage());
     }
 }
 
-// Sends a WhatsApp success confirmation to both the donor and the association's own contact
-// number, once a donation is confirmed/verified as paid. Never throws.
+// Sends a donation success confirmation to the donor (WhatsApp + email, whichever are configured
+// and on file) and a WhatsApp-only heads-up to the association's own contact number, once a
+// donation is confirmed/verified as paid. Never throws. The donor's phone/email come from the
+// members table for a self-donation (member_id set), or donor_phone/donor_email for a public
+// well-wisher donation - whichever is on file.
 function notify_donation_whatsapp(?array $donation): void
 {
     try {
-        if (!$donation || !wa_is_connected()) {
+        if (!$donation) {
             return;
         }
 
         $donorPhone = $donation['donor_phone'] ?? null;
+        $donorEmail = $donation['donor_email'] ?? null;
         $donorName = $donation['donor_name'] ?? null;
         if (!empty($donation['member_id'])) {
-            $member = db_get('SELECT name, phone FROM members WHERE id = ?', [$donation['member_id']]);
+            $member = db_get('SELECT name, phone, email FROM members WHERE id = ?', [$donation['member_id']]);
             if ($member) {
                 $donorPhone = $donorPhone ?: $member['phone'];
+                $donorEmail = $donorEmail ?: $member['email'];
                 $donorName = $donorName ?: $member['name'];
             }
         }
@@ -97,15 +111,23 @@ function notify_donation_whatsapp(?array $donation): void
         $purposeText = !empty($donation['purpose']) ? " for {$donation['purpose']}" : '';
         $signature = sign_off();
 
-        if ($donorPhone) {
+        $donorText = "Hi $donorName, thank you! Your donation of ₹{$donation['amount']}$purposeText has been received.\n\n$signature";
+        if ($donorPhone && wa_is_connected()) {
             try {
-                wa_send_message($donorPhone, "Hi $donorName, thank you! Your donation of ₹{$donation['amount']}$purposeText has been received.\n\n$signature");
+                wa_send_message($donorPhone, $donorText);
             } catch (Throwable $e) {
                 error_log('Donation WhatsApp to donor failed: ' . $e->getMessage());
             }
         }
+        if ($donorEmail && is_email_configured()) {
+            try {
+                send_mail($donorEmail, 'Thank you for your donation - ' . app_name(), text_to_html($donorText));
+            } catch (Throwable $e) {
+                error_log('Donation email to donor failed: ' . $e->getMessage());
+            }
+        }
 
-        if (!empty($settings['phone_number'])) {
+        if (!empty($settings['phone_number']) && wa_is_connected()) {
             try {
                 wa_send_message($settings['phone_number'], "Donation received: ₹{$donation['amount']} from $donorName$purposeText.\n\n$signature");
             } catch (Throwable $e) {
@@ -113,6 +135,6 @@ function notify_donation_whatsapp(?array $donation): void
             }
         }
     } catch (Throwable $e) {
-        error_log('Donation WhatsApp notification failed: ' . $e->getMessage());
+        error_log('Donation notification failed: ' . $e->getMessage());
     }
 }

@@ -84,7 +84,7 @@ Router::post('/members', function ($params, $body) {
         'entityId' => $member['id'],
         'description' => "Added member {$member['name']} (Site No " . ($member['site_no'] ?: '-') . ')',
     ]);
-    notify_member($member, welcome_message($member));
+    notify_member($member, welcome_message($member), 'Welcome to ' . app_name());
     Response::json($member, 201);
 });
 

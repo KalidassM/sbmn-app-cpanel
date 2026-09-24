@@ -72,18 +72,23 @@ Router::post('/auth/change-password', function ($params, $body) {
     ]);
 });
 
-// A user's WhatsApp number for the reset code: their linked member's phone, or - for accounts
-// created without a member link (e.g. the default admin) - the username itself if it looks like
-// a phone number, matching the "username = phone number" convention used for bulk-created accounts.
-function auth_resolve_reset_phone(array $user): ?string
+// A user's WhatsApp number and email for the reset code: their linked member's phone/email, or -
+// for accounts created without a member link (e.g. the default admin) - the username itself as
+// the phone if it looks like one, matching the "username = phone number" convention used for
+// bulk-created accounts.
+function auth_resolve_reset_contact(array $user): array
 {
+    $phone = null;
+    $email = null;
     if (!empty($user['member_id'])) {
-        $member = db_get('SELECT phone FROM members WHERE id = ?', [$user['member_id']]);
-        if (!empty($member['phone'])) {
-            return $member['phone'];
-        }
+        $member = db_get('SELECT phone, email FROM members WHERE id = ?', [$user['member_id']]);
+        $phone = $member['phone'] ?? null;
+        $email = $member['email'] ?? null;
     }
-    return preg_match('/^\d{10}$/', $user['username']) ? $user['username'] : null;
+    if (!$phone && preg_match('/^\d{10}$/', $user['username'])) {
+        $phone = $user['username'];
+    }
+    return ['phone' => $phone, 'email' => $email];
 }
 
 Router::post('/auth/forgot-password', function ($params, $body) {
@@ -97,13 +102,11 @@ Router::post('/auth/forgot-password', function ($params, $body) {
         throw new ApiError(404, 'No account found with that username');
     }
 
-    $phone = auth_resolve_reset_phone($user);
-    if (!$phone) {
-        throw new ApiError(400, 'No phone number on file for this account. Contact an administrator.');
-    }
-
-    if (!wa_is_connected()) {
-        throw new ApiError(503, 'WhatsApp is not configured right now. Please contact an administrator.');
+    ['phone' => $phone, 'email' => $email] = auth_resolve_reset_contact($user);
+    $canWhatsApp = $phone && wa_is_connected();
+    $canEmail = $email && is_email_configured();
+    if (!$canWhatsApp && !$canEmail) {
+        throw new ApiError(400, 'No phone number or email on file for this account (or neither WhatsApp nor email is configured on the server). Contact an administrator.');
     }
 
     $code = (string) random_int(100000, 999999);
@@ -115,13 +118,28 @@ Router::post('/auth/forgot-password', function ($params, $body) {
     $appName = $settings['app_name'] ?? 'the Association';
     $text = "Your password reset code for $appName portal is: $code. It expires in " . RESET_CODE_TTL_MINUTES . " minutes. If you did not request this, please ignore this message.\n\n" . sign_off();
 
-    try {
-        wa_send_message($phone, $text);
-        Response::json(['ok' => true]);
-    } catch (Throwable $e) {
-        error_log('Forgot-password WhatsApp send failed: ' . $e->getMessage());
-        throw new ApiError(500, 'Could not send the reset code over WhatsApp. Please try again or contact an administrator.');
+    $sentVia = [];
+    if ($canWhatsApp) {
+        try {
+            wa_send_message($phone, $text);
+            $sentVia[] = 'WhatsApp';
+        } catch (Throwable $e) {
+            error_log('Forgot-password WhatsApp send failed: ' . $e->getMessage());
+        }
     }
+    if ($canEmail) {
+        try {
+            send_mail($email, "Your password reset code for $appName", text_to_html($text));
+            $sentVia[] = 'email';
+        } catch (Throwable $e) {
+            error_log('Forgot-password email send failed: ' . $e->getMessage());
+        }
+    }
+
+    if (!$sentVia) {
+        throw new ApiError(500, 'Could not send the reset code. Please try again or contact an administrator.');
+    }
+    Response::json(['ok' => true, 'sentVia' => $sentVia]);
 });
 
 Router::post('/auth/reset-password', function ($params, $body) {
