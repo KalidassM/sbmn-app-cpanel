@@ -32,7 +32,18 @@ window.GeneralSettingsPage = {
       <form id="reminderForm">
         <div class="panel">
           <div class="panel-header"><h3>Reminder Schedule</h3></div>
-          <div class="field"><label>Days of the month to send WhatsApp reminders on</label>
+          <div class="field"><label>Send reminders via</label>
+            <div class="toolbar" style="justify-content:flex-start;">
+              <label style="display:flex;align-items:center;gap:4px;font-weight:normal;">
+                <input type="checkbox" id="reminderChannelWhatsApp" /> WhatsApp
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;font-weight:normal;">
+                <input type="checkbox" id="reminderChannelEmail" /> Email
+              </label>
+            </div>
+            <p class="text-muted" style="font-size:0.85rem;">A channel only actually sends if it's also configured (WhatsApp access token below, or a Resend API key in Email Settings) and the member has that contact detail on file.</p>
+          </div>
+          <div class="field"><label>Days of the month to send reminders on</label>
             <div id="reminderDaysGrid" style="display:grid;grid-template-columns:repeat(7, 1fr);gap:6px;max-width:420px;">
               ${Array.from({ length: 31 }, (_, i) => i + 1)
                 .map(
@@ -84,6 +95,9 @@ window.GeneralSettingsPage = {
       ? '<span class="badge active">configured</span>'
       : '<span class="badge unpaid">not configured</span>';
     document.getElementById('reminderTime').value = settings.reminder_time || '10:00';
+    const selectedChannels = new Set((settings.reminder_channels || 'whatsapp,email').split(',').map((c) => c.trim()));
+    document.getElementById('reminderChannelWhatsApp').checked = selectedChannels.has('whatsapp');
+    document.getElementById('reminderChannelEmail').checked = selectedChannels.has('email');
     const selectedDays = new Set((settings.reminder_days || '1,2,3,4,5,7,10').split(',').map((d) => d.trim()));
     document.querySelectorAll('.reminderDay').forEach((cb) => {
       cb.checked = selectedDays.has(cb.value);
@@ -122,9 +136,17 @@ window.GeneralSettingsPage = {
         this.showAlert('Pick at least one reminder day');
         return;
       }
+      const channels = [];
+      if (document.getElementById('reminderChannelWhatsApp').checked) channels.push('whatsapp');
+      if (document.getElementById('reminderChannelEmail').checked) channels.push('email');
+      if (!channels.length) {
+        this.showAlert('Pick at least one reminder channel (WhatsApp or Email)');
+        return;
+      }
       saveSection({
         reminder_days: reminderDays.join(','),
         reminder_time: document.getElementById('reminderTime').value,
+        reminder_channels: channels.join(','),
       });
     });
 

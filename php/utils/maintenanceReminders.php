@@ -3,6 +3,7 @@
 const MONTH_NAMES = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DEFAULT_REMINDER_DAYS = '1,2,3,4,5,7,10';
 const DEFAULT_REMINDER_TIME = '10:00';
+const DEFAULT_REMINDER_CHANNELS = 'whatsapp,email';
 
 function now_ist(): array
 {
@@ -18,11 +19,16 @@ function now_ist(): array
 
 function send_daily_reminders(bool $force = false): array
 {
-    if (!wa_is_connected() && !is_email_configured()) {
-        return ['skipped' => true, 'reason' => 'Neither WhatsApp nor email is configured. Set WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID, or a Resend API key in General Settings.'];
-    }
+    $settings = db_get('SELECT reminders_last_sent_date, app_name, reminder_days, reminder_time, reminder_channels FROM general_settings WHERE id = 1');
 
-    $settings = db_get('SELECT reminders_last_sent_date, app_name, reminder_days, reminder_time FROM general_settings WHERE id = 1');
+    // Which channel(s) the admin picked in General Settings, narrowed to what's actually
+    // configured on the server - picking "WhatsApp" there doesn't help if no access token is set.
+    $channels = array_map('trim', explode(',', $settings['reminder_channels'] ?? DEFAULT_REMINDER_CHANNELS));
+    $useWhatsApp = in_array('whatsapp', $channels, true) && wa_is_connected();
+    $useEmail = in_array('email', $channels, true) && is_email_configured();
+    if (!$useWhatsApp && !$useEmail) {
+        return ['skipped' => true, 'reason' => 'No reminder channel is both selected in General Settings and configured on the server.'];
+    }
 
     $reminderDays = array_values(array_filter(array_map(
         fn ($d) => (int) trim($d),
@@ -60,11 +66,11 @@ function send_daily_reminders(bool $force = false): array
     $skippedNoPhone = [];
 
     foreach ($dues as $due) {
-        $hasPhone = !empty($due['phone']) && preg_replace('/\D/', '', $due['phone']);
-        $hasEmail = !empty($due['email']);
-        if (!$hasPhone && !$hasEmail) {
+        $canWhatsApp = $useWhatsApp && !empty($due['phone']) && preg_replace('/\D/', '', $due['phone']);
+        $canEmail = $useEmail && !empty($due['email']);
+        if (!$canWhatsApp && !$canEmail) {
             $skippedNoPhone[] = $due['name'];
-            db_run('UPDATE maintenance_payments SET last_reminder_error = ? WHERE id = ?', ['No phone number or email on file', $due['id']]);
+            db_run('UPDATE maintenance_payments SET last_reminder_error = ? WHERE id = ?', ['No phone/email reachable via the selected reminder channel(s)', $due['id']]);
             continue;
         }
 
@@ -78,7 +84,7 @@ function send_daily_reminders(bool $force = false): array
         $anySent = false;
         $lastError = null;
 
-        if ($hasPhone && wa_is_connected()) {
+        if ($canWhatsApp) {
             try {
                 wa_send_message($due['phone'], $message);
                 $anySent = true;
@@ -86,7 +92,7 @@ function send_daily_reminders(bool $force = false): array
                 $lastError = $e->getMessage();
             }
         }
-        if ($hasEmail && is_email_configured()) {
+        if ($canEmail) {
             try {
                 send_mail($due['email'], 'Maintenance due reminder - ' . app_name(), text_to_html($message));
                 $anySent = true;

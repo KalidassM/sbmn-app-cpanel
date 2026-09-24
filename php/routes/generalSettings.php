@@ -47,11 +47,23 @@ Router::put('/general-settings', function ($params, $body) {
         $finalReminderTime = $body['reminder_time'];
     }
 
+    $finalReminderChannels = $existing['reminder_channels'];
+    if (array_key_exists('reminder_channels', $body)) {
+        $channels = array_values(array_unique(array_intersect(
+            array_map('trim', explode(',', (string) $body['reminder_channels'])),
+            ['whatsapp', 'email']
+        )));
+        if (!$channels) {
+            throw new ApiError(400, 'Pick at least one reminder channel (WhatsApp or Email)');
+        }
+        $finalReminderChannels = implode(',', $channels);
+    }
+
     db_run(
         'UPDATE general_settings SET
            maintenance_amount = ?,
            app_name = ?, contact_email = ?, office_address = ?, office_hours = ?, phone_number = ?,
-           resend_api_key = ?, resend_from_email = ?, reminder_days = ?, reminder_time = ?,
+           resend_api_key = ?, resend_from_email = ?, reminder_days = ?, reminder_time = ?, reminder_channels = ?,
            updated_at = NOW()
          WHERE id = 1',
         [
@@ -66,6 +78,7 @@ Router::put('/general-settings', function ($params, $body) {
             array_key_exists('resend_from_email', $body) ? ($body['resend_from_email'] ?: null) : $existing['resend_from_email'],
             $finalReminderDays,
             $finalReminderTime,
+            $finalReminderChannels,
         ]
     );
     $row = db_get('SELECT * FROM general_settings WHERE id = 1');

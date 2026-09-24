@@ -12,6 +12,8 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/router.php';
 
+db_migrate();
+
 foreach (glob(__DIR__ . '/utils/*.php') as $file) {
     require_once $file;
 }

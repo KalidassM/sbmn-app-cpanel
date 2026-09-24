@@ -58,3 +58,22 @@ function db_transaction(callable $fn)
         throw $e;
     }
 }
+
+function db_column_exists(string $table, string $column): bool
+{
+    $row = db_get(
+        'SELECT COUNT(*) AS c FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?',
+        [$table, $column]
+    );
+    return (int) $row['c'] > 0;
+}
+
+// Self-healing schema check, run once per request boot (see bootstrap.php) - cheap (a couple of
+// tiny lookups) and idempotent, so it applies automatically in every environment (local dev now,
+// production later) with no manual SQL step, the same way the original app's schema evolved.
+function db_migrate(): void
+{
+    if (!db_column_exists('general_settings', 'reminder_channels')) {
+        db()->exec("ALTER TABLE general_settings ADD COLUMN reminder_channels VARCHAR(30) NOT NULL DEFAULT 'whatsapp,email'");
+    }
+}
