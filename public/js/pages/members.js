@@ -47,8 +47,8 @@ window.MembersPage = {
           </div>
         </div>
         <table>
-          <thead><tr>${isAdmin ? '<th><input type="checkbox" id="selectAllMembers" /></th>' : ''}<th>Site No</th><th>Name</th>${isAdmin ? '<th>Phone</th>' : ''}<th>Joined</th><th>Status</th><th>Inactive Since</th>${isAdmin ? '<th></th>' : ''}</tr></thead>
-          <tbody id="rows"><tr><td colspan="${isAdmin ? 8 : 5}">Loading…</td></tr></tbody>
+          <thead><tr>${isAdmin ? '<th><input type="checkbox" id="selectAllMembers" /></th>' : ''}<th>Site No</th><th>Name</th>${isAdmin ? '<th>Phone</th><th>Email</th>' : ''}<th>Joined</th><th>Status</th><th>Inactive Since</th>${isAdmin ? '<th></th>' : ''}</tr></thead>
+          <tbody id="rows"><tr><td colspan="${isAdmin ? 9 : 5}">Loading…</td></tr></tbody>
         </table>
       </div>
     `;
@@ -246,7 +246,7 @@ window.MembersPage = {
     const members = this.getFilteredMembers();
     const rows = document.getElementById('rows');
     if (!members.length) {
-      rows.innerHTML = `<tr class="empty-row"><td colspan="${isAdmin ? 8 : 5}">No members match this view</td></tr>`;
+      rows.innerHTML = `<tr class="empty-row"><td colspan="${isAdmin ? 9 : 5}">No members match this view</td></tr>`;
       return;
     }
     rows.innerHTML = members
@@ -256,7 +256,7 @@ window.MembersPage = {
         ${isAdmin ? `<td><input type="checkbox" class="memberSelect" value="${m.id}" ${this.selectedIds.has(m.id) ? 'checked' : ''} /></td>` : ''}
         <td>${Util.escapeHtml(m.site_no || '-')}</td>
         <td>${Util.escapeHtml(m.name)}</td>
-        ${isAdmin ? `<td>${Util.escapeHtml(m.phone || '-')}</td>` : ''}
+        ${isAdmin ? `<td>${Util.escapeHtml(m.phone || '-')}</td><td>${Util.escapeHtml(m.email || '-')}</td>` : ''}
         <td>${Util.formatDate(m.join_date)}</td>
         <td><span class="badge ${m.status}">${m.status}</span></td>
         <td>${Util.formatDate(m.inactive_date)}</td>
