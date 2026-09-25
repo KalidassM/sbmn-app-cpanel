@@ -1,11 +1,13 @@
 <?php
 
-// razorpay_key_secret must never leave the server — only expose the publishable key_id
+// razorpay_key_secret/sbiepay_secret_key must never leave the server
 function payment_settings_public(array $row): array
 {
     $secret = $row['razorpay_key_secret'] ?? null;
-    unset($row['razorpay_key_secret']);
+    $sbiSecret = $row['sbiepay_secret_key'] ?? null;
+    unset($row['razorpay_key_secret'], $row['sbiepay_secret_key']);
     $row['razorpay_configured'] = !empty($row['razorpay_key_id']) && !empty($secret);
+    $row['sbiepay_configured'] = !empty($row['sbiepay_merchant_id']) && !empty($sbiSecret);
     return $row;
 }
 
@@ -17,10 +19,20 @@ Router::get('/payment-settings', function () {
 Router::put('/payment-settings', function ($params, $body) {
     $user = require_super_admin();
     $existing = db_get('SELECT * FROM payment_settings WHERE id = 1');
+
+    $finalGatewayDisplay = $existing['gateway_display'];
+    if (array_key_exists('gateway_display', $body)) {
+        if (!in_array($body['gateway_display'], ['both', 'razorpay', 'sbiepay'], true)) {
+            throw new ApiError(400, 'gateway_display must be "both", "razorpay" or "sbiepay"');
+        }
+        $finalGatewayDisplay = $body['gateway_display'];
+    }
+
     db_run(
         'UPDATE payment_settings
          SET upi_id = ?, payee_name = ?, bank_name = ?, account_no = ?, ifsc_code = ?,
-             razorpay_key_id = ?, razorpay_key_secret = ?, updated_at = NOW()
+             razorpay_key_id = ?, razorpay_key_secret = ?, sbiepay_merchant_id = ?, sbiepay_secret_key = ?,
+             gateway_display = ?, updated_at = NOW()
          WHERE id = 1',
         [
             // each field falls back to its existing value when omitted, so partial saves (e.g. the gateway-keys
@@ -33,6 +45,9 @@ Router::put('/payment-settings', function ($params, $body) {
             array_key_exists('razorpay_key_id', $body) ? ($body['razorpay_key_id'] ?: null) : $existing['razorpay_key_id'],
             // blank/omitted secret keeps the existing one, so admins don't have to re-enter it every save
             !empty($body['razorpay_key_secret']) ? $body['razorpay_key_secret'] : $existing['razorpay_key_secret'],
+            array_key_exists('sbiepay_merchant_id', $body) ? ($body['sbiepay_merchant_id'] ?: null) : $existing['sbiepay_merchant_id'],
+            !empty($body['sbiepay_secret_key']) ? $body['sbiepay_secret_key'] : $existing['sbiepay_secret_key'],
+            $finalGatewayDisplay,
         ]
     );
     $row = db_get('SELECT * FROM payment_settings WHERE id = 1');

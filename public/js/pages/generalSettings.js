@@ -64,12 +64,44 @@ window.GeneralSettingsPage = {
 
       <form id="emailForm">
         <div class="panel">
-          <div class="panel-header"><h3>Email Settings (Resend) <span id="emailBadge"></span></h3></div>
-          <div class="form-grid">
-            <div class="field"><label>Resend API Key</label><input id="resendApiKey" type="password" placeholder="leave blank to keep current" /></div>
-            <div class="field"><label>From Email</label><input id="resendFromEmail" type="email" placeholder="onboarding@resend.dev" /></div>
+          <div class="panel-header"><h3>Email Settings <span id="emailBadge"></span></h3></div>
+          <div class="field"><label>Send via</label>
+            <div class="toolbar" style="justify-content:flex-start;">
+              <label style="display:flex;align-items:center;gap:4px;font-weight:normal;">
+                <input type="radio" name="emailProvider" id="emailProviderResend" value="resend" /> Resend (API)
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;font-weight:normal;">
+                <input type="radio" name="emailProvider" id="emailProviderSmtp" value="smtp" /> SMTP (your own mailbox)
+              </label>
+            </div>
           </div>
-          <p class="text-muted" style="font-size:0.85rem;">Used to send the payment-received notification above, via <a href="https://resend.com" target="_blank">Resend</a>'s free tier. Get an API key from resend.com/api-keys. Leave From Email blank to use Resend's shared sandbox sender (<code>onboarding@resend.dev</code>) &mdash; no domain setup needed to get started; verify your own domain in Resend later if you want to send from your association's own address.</p>
+
+          <div id="resendFields">
+            <div class="form-grid">
+              <div class="field"><label>Resend API Key</label><input id="resendApiKey" type="password" placeholder="leave blank to keep current" /></div>
+              <div class="field"><label>From Email</label><input id="resendFromEmail" type="email" placeholder="onboarding@resend.dev" /></div>
+            </div>
+            <p class="text-muted" style="font-size:0.85rem;">Via <a href="https://resend.com" target="_blank">Resend</a>'s free tier. Get an API key from resend.com/api-keys. Leave From Email blank to use Resend's shared sandbox sender (<code>onboarding@resend.dev</code>) &mdash; verify your own domain in Resend if you want to send from your association's own address.</p>
+          </div>
+
+          <div id="smtpFields">
+            <div class="form-grid">
+              <div class="field"><label>SMTP Host</label><input id="smtpHost" placeholder="e.g. mail.yourdomain.com" /></div>
+              <div class="field"><label>Port</label><input id="smtpPort" type="number" placeholder="587" /></div>
+              <div class="field"><label>Encryption</label>
+                <select id="smtpSecure">
+                  <option value="tls">STARTTLS (usually port 587)</option>
+                  <option value="ssl">SSL (usually port 465)</option>
+                  <option value="none">None</option>
+                </select>
+              </div>
+              <div class="field"><label>Username</label><input id="smtpUsername" placeholder="e.g. noreply@yourdomain.com" /></div>
+              <div class="field"><label>Password</label><input id="smtpPassword" type="password" placeholder="leave blank to keep current" /></div>
+              <div class="field"><label>From Email</label><input id="smtpFromEmail" type="email" placeholder="defaults to Username" /></div>
+            </div>
+            <p class="text-muted" style="font-size:0.85rem;">Sends through your own mailbox's SMTP server (e.g. the email account cPanel gives you with your domain) instead of a third-party API - no external service, but deliverability depends on that mailbox's own reputation.</p>
+          </div>
+
           <div class="toolbar mt-16">
             <button type="submit">Save</button>
             <button type="button" class="secondary" id="testEmailBtn">Send Test Email</button>
@@ -94,6 +126,22 @@ window.GeneralSettingsPage = {
     document.getElementById('emailBadge').innerHTML = settings.email_configured
       ? '<span class="badge active">configured</span>'
       : '<span class="badge unpaid">not configured</span>';
+    const emailProvider = settings.email_provider || 'resend';
+    document.getElementById('emailProviderResend').checked = emailProvider === 'resend';
+    document.getElementById('emailProviderSmtp').checked = emailProvider === 'smtp';
+    document.getElementById('smtpHost').value = settings.smtp_host || '';
+    document.getElementById('smtpPort').value = settings.smtp_port || '';
+    document.getElementById('smtpSecure').value = settings.smtp_secure || 'tls';
+    document.getElementById('smtpUsername').value = settings.smtp_username || '';
+    document.getElementById('smtpPassword').placeholder = settings.smtp_password_set ? 'leave blank to keep current' : '';
+    document.getElementById('smtpFromEmail').value = settings.smtp_from_email || '';
+    const toggleEmailFields = () => {
+      const useSmtp = document.getElementById('emailProviderSmtp').checked;
+      document.getElementById('resendFields').style.display = useSmtp ? 'none' : '';
+      document.getElementById('smtpFields').style.display = useSmtp ? '' : 'none';
+    };
+    toggleEmailFields();
+    document.querySelectorAll('input[name="emailProvider"]').forEach((r) => r.addEventListener('change', toggleEmailFields));
     document.getElementById('reminderTime').value = settings.reminder_time || '10:00';
     const selectedChannels = new Set((settings.reminder_channels || 'whatsapp,email').split(',').map((c) => c.trim()));
     document.getElementById('reminderChannelWhatsApp').checked = selectedChannels.has('whatsapp');
@@ -153,8 +201,15 @@ window.GeneralSettingsPage = {
     document.getElementById('emailForm').addEventListener('submit', (e) => {
       e.preventDefault();
       saveSection({
+        email_provider: document.querySelector('input[name="emailProvider"]:checked').value,
         resend_api_key: document.getElementById('resendApiKey').value,
         resend_from_email: document.getElementById('resendFromEmail').value.trim(),
+        smtp_host: document.getElementById('smtpHost').value.trim(),
+        smtp_port: Number(document.getElementById('smtpPort').value) || null,
+        smtp_secure: document.getElementById('smtpSecure').value,
+        smtp_username: document.getElementById('smtpUsername').value.trim(),
+        smtp_password: document.getElementById('smtpPassword').value,
+        smtp_from_email: document.getElementById('smtpFromEmail').value.trim(),
       });
     });
 

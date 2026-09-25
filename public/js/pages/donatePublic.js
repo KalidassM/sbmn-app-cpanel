@@ -46,19 +46,30 @@
       <div id="doneContent"></div>
     `;
 
-    request('/razorpay-config')
-      .then((config) => {
-        const gatewayBox = document.getElementById('gatewayContent');
-        if (config.configured) {
-          gatewayBox.innerHTML = `<button id="payOnlineBtn" style="width:100%;">Pay Online Now (Card / UPI / NetBanking)</button>`;
-          document.getElementById('payOnlineBtn').addEventListener('click', () => payWithRazorpay(donation));
-        } else {
-          loadQr(donation);
-        }
-      })
-      .catch((err) => {
-        document.getElementById('gatewayContent').innerHTML = `<div class="alert error">${escapeHtml(err.message)}</div>`;
+    Promise.all([request('/razorpay-config').catch(() => ({ configured: false })), request('/sbiepay-config').catch(() => ({ configured: false }))])
+      .then(([razorpay, sbiepay]) => {
+        renderGatewayChoices(donation, razorpay.configured, sbiepay.configured);
       });
+  }
+
+  function renderGatewayChoices(donation, razorpayConfigured, sbiepayConfigured) {
+    const gatewayBox = document.getElementById('gatewayContent');
+    if (!razorpayConfigured && !sbiepayConfigured) {
+      loadQr(donation);
+      return;
+    }
+    gatewayBox.innerHTML = `
+      <div class="toolbar" style="flex-direction:column; gap:8px;">
+        ${razorpayConfigured ? `<button id="payOnlineBtn" style="width:100%;">Pay with Razorpay (Card / UPI / NetBanking)</button>` : ''}
+        ${sbiepayConfigured ? `<button id="paySbiepayBtn" class="${razorpayConfigured ? 'secondary' : ''}" style="width:100%;">Pay with SBIePay</button>` : ''}
+      </div>
+    `;
+    if (razorpayConfigured) {
+      document.getElementById('payOnlineBtn').addEventListener('click', () => payWithRazorpay(donation, sbiepayConfigured));
+    }
+    if (sbiepayConfigured) {
+      document.getElementById('paySbiepayBtn').addEventListener('click', () => payWithSbiepay(donation));
+    }
   }
 
   async function loadQr(donation) {
@@ -77,7 +88,7 @@
     }
   }
 
-  async function payWithRazorpay(donation) {
+  async function payWithRazorpay(donation, sbiepayConfigured) {
     const gatewayBox = document.getElementById('gatewayContent');
     try {
       const order = await request(`/${donation.id}/order`, { method: 'POST' });
@@ -110,13 +121,42 @@
         },
         modal: {
           ondismiss: () => {
-            gatewayBox.innerHTML = `<button id="payOnlineBtn" style="width:100%;">Pay Online Now (Card / UPI / NetBanking)</button>`;
-            document.getElementById('payOnlineBtn').addEventListener('click', () => payWithRazorpay(donation));
+            renderGatewayChoices(donation, true, sbiepayConfigured);
           },
         },
         theme: { color: '#2f6f4e' },
       });
       rzp.open();
+    } catch (err) {
+      gatewayBox.innerHTML = `<div class="alert error">${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  // SBIePay redirects the whole browser to SBI's hosted page rather than opening a JS modal, so
+  // there's no client-side "verify" step here - SBI calls our server's /sbiepay/callback route
+  // directly once payment completes (see php/routes/publicDonations.php). Until SBI's real
+  // Merchant Integration Document is wired into php/utils/sbiepay.php, the /order call below
+  // always fails with a clear error - this is otherwise ready to redirect once it doesn't.
+  async function payWithSbiepay(donation) {
+    const gatewayBox = document.getElementById('gatewayContent');
+    try {
+      const order = await request(`/${donation.id}/sbiepay/order`, { method: 'POST' });
+      if (order.redirectUrl && order.formFields) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = order.redirectUrl;
+        Object.entries(order.formFields).forEach(([key, value]) => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = value;
+          form.appendChild(input);
+        });
+        document.body.appendChild(form);
+        form.submit();
+      } else {
+        throw new Error('SBIePay did not return a redirect target');
+      }
     } catch (err) {
       gatewayBox.innerHTML = `<div class="alert error">${escapeHtml(err.message)}</div>`;
     }

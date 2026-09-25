@@ -76,4 +76,33 @@ function db_migrate(): void
     if (!db_column_exists('general_settings', 'reminder_channels')) {
         db()->exec("ALTER TABLE general_settings ADD COLUMN reminder_channels VARCHAR(30) NOT NULL DEFAULT 'whatsapp,email'");
     }
+    if (!db_column_exists('general_settings', 'email_provider')) {
+        db()->exec("ALTER TABLE general_settings ADD COLUMN email_provider VARCHAR(10) NOT NULL DEFAULT 'resend'");
+        db()->exec('ALTER TABLE general_settings ADD COLUMN smtp_host VARCHAR(255)');
+        db()->exec('ALTER TABLE general_settings ADD COLUMN smtp_port INT');
+        db()->exec('ALTER TABLE general_settings ADD COLUMN smtp_username VARCHAR(255)');
+        db()->exec('ALTER TABLE general_settings ADD COLUMN smtp_password VARCHAR(255)');
+        db()->exec("ALTER TABLE general_settings ADD COLUMN smtp_secure VARCHAR(10) NOT NULL DEFAULT 'tls'");
+        db()->exec('ALTER TABLE general_settings ADD COLUMN smtp_from_email VARCHAR(255)');
+    }
+    // SBIePay is offered alongside Razorpay (not a replacement) - payers choose whichever gateway
+    // is configured. See php/utils/sbiepay.php for why order/verify are still stubbed.
+    if (!db_column_exists('payment_settings', 'sbiepay_merchant_id')) {
+        db()->exec('ALTER TABLE payment_settings ADD COLUMN sbiepay_merchant_id VARCHAR(255)');
+        db()->exec('ALTER TABLE payment_settings ADD COLUMN sbiepay_secret_key VARCHAR(255)');
+    }
+    if (!db_column_exists('maintenance_payments', 'sbiepay_order_id')) {
+        db()->exec('ALTER TABLE maintenance_payments ADD COLUMN sbiepay_order_id VARCHAR(255)');
+        db()->exec('ALTER TABLE maintenance_payments ADD COLUMN sbiepay_payment_id VARCHAR(255)');
+    }
+    if (!db_column_exists('donations', 'sbiepay_order_id')) {
+        db()->exec('ALTER TABLE donations ADD COLUMN sbiepay_order_id VARCHAR(255)');
+        db()->exec('ALTER TABLE donations ADD COLUMN sbiepay_payment_id VARCHAR(255)');
+    }
+    // Which gateway(s) payers see on the public pay/donate pages, independent of which are
+    // configured - lets an admin hide a configured-but-not-yet-working gateway (e.g. SBIePay
+    // before its real integration is done) without clearing its saved keys.
+    if (!db_column_exists('payment_settings', 'gateway_display')) {
+        db()->exec("ALTER TABLE payment_settings ADD COLUMN gateway_display VARCHAR(10) NOT NULL DEFAULT 'both'");
+    }
 }

@@ -107,19 +107,30 @@
       <div id="qrContent-member-${m.member_id}"></div>
     `;
 
-    request('/razorpay-config')
-      .then((config) => {
-        const gatewayBox = document.getElementById(`gatewayContent-member-${m.member_id}`);
-        if (config.configured) {
-          gatewayBox.innerHTML = `<button id="payOnlineBtn-member-${m.member_id}" style="width:100%;">Pay Online Now (Card / UPI / NetBanking)</button>`;
-          document.getElementById(`payOnlineBtn-member-${m.member_id}`).addEventListener('click', () => payWithRazorpay(m, remaining));
-        } else {
-          loadQr(m, remaining);
-        }
-      })
-      .catch((err) => {
-        document.getElementById(`gatewayContent-member-${m.member_id}`).innerHTML = `<div class="alert error">${escapeHtml(err.message)}</div>`;
+    Promise.all([request('/razorpay-config').catch(() => ({ configured: false })), request('/sbiepay-config').catch(() => ({ configured: false }))])
+      .then(([razorpay, sbiepay]) => {
+        renderGatewayChoices(m, remaining, razorpay.configured, sbiepay.configured);
       });
+  }
+
+  function renderGatewayChoices(m, remaining, razorpayConfigured, sbiepayConfigured) {
+    const gatewayBox = document.getElementById(`gatewayContent-member-${m.member_id}`);
+    if (!razorpayConfigured && !sbiepayConfigured) {
+      loadQr(m, remaining);
+      return;
+    }
+    gatewayBox.innerHTML = `
+      <div class="toolbar" style="flex-direction:column; gap:8px;">
+        ${razorpayConfigured ? `<button id="payOnlineBtn-member-${m.member_id}" style="width:100%;">Pay with Razorpay (Card / UPI / NetBanking)</button>` : ''}
+        ${sbiepayConfigured ? `<button id="paySbiepayBtn-member-${m.member_id}" class="${razorpayConfigured ? 'secondary' : ''}" style="width:100%;">Pay with SBIePay</button>` : ''}
+      </div>
+    `;
+    if (razorpayConfigured) {
+      document.getElementById(`payOnlineBtn-member-${m.member_id}`).addEventListener('click', () => payWithRazorpay(m, remaining, sbiepayConfigured));
+    }
+    if (sbiepayConfigured) {
+      document.getElementById(`paySbiepayBtn-member-${m.member_id}`).addEventListener('click', () => payWithSbiepay(m, remaining));
+    }
   }
 
   async function loadQr(m, remaining) {
@@ -139,7 +150,7 @@
     }
   }
 
-  async function payWithRazorpay(m, remaining) {
+  async function payWithRazorpay(m, remaining, sbiepayConfigured) {
     const gatewayBox = document.getElementById(`gatewayContent-member-${m.member_id}`);
     const dueIds = m.dues.map((d) => d.id);
     try {
@@ -177,13 +188,43 @@
         },
         modal: {
           ondismiss: () => {
-            gatewayBox.innerHTML = `<button id="payOnlineBtn-member-${m.member_id}" style="width:100%;">Pay Online Now (Card / UPI / NetBanking)</button>`;
-            document.getElementById(`payOnlineBtn-member-${m.member_id}`).addEventListener('click', () => payWithRazorpay(m, remaining));
+            renderGatewayChoices(m, remaining, true, sbiepayConfigured);
           },
         },
         theme: { color: '#2f6f4e' },
       });
       rzp.open();
+    } catch (err) {
+      gatewayBox.innerHTML = `<div class="alert error">${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  // SBIePay redirects the whole browser to SBI's hosted page rather than opening a JS modal, so
+  // there's no client-side "verify" step here - SBI calls our server's /sbiepay/callback route
+  // directly once payment completes (see php/routes/publicMaintenance.php). Until SBI's real
+  // Merchant Integration Document is wired into php/utils/sbiepay.php, the /order call below
+  // always fails with a clear error - this is otherwise ready to redirect once it doesn't.
+  async function payWithSbiepay(m, remaining) {
+    const gatewayBox = document.getElementById(`gatewayContent-member-${m.member_id}`);
+    const dueIds = m.dues.map((d) => d.id);
+    try {
+      const order = await request('/pay-multiple/sbiepay/order', { method: 'POST', body: { dueIds } });
+      if (order.redirectUrl && order.formFields) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = order.redirectUrl;
+        Object.entries(order.formFields).forEach(([key, value]) => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = value;
+          form.appendChild(input);
+        });
+        document.body.appendChild(form);
+        form.submit();
+      } else {
+        throw new Error('SBIePay did not return a redirect target');
+      }
     } catch (err) {
       gatewayBox.innerHTML = `<div class="alert error">${escapeHtml(err.message)}</div>`;
     }

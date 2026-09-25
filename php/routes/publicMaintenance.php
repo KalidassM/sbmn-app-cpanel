@@ -102,9 +102,13 @@ function public_maintenance_load_pending_dues(array $ids): array
 Router::get('/public/maintenance/razorpay-config', function () {
     $settings = razorpay_gateway_settings();
     Response::json([
-        'configured' => !empty($settings['razorpay_key_id']) && !empty($settings['razorpay_key_secret']),
+        'configured' => razorpay_should_show(),
         'keyId' => $settings['razorpay_key_id'] ?: null,
     ]);
+});
+
+Router::get('/public/maintenance/sbiepay-config', function () {
+    Response::json(['configured' => sbiepay_should_show()]);
 });
 
 Router::get('/public/maintenance/qr', function ($params, $body, $query) {
@@ -119,7 +123,7 @@ Router::get('/public/maintenance/qr', function ($params, $body, $query) {
 // sized to the sum of all remaining amounts, which then marks every included month paid.
 // Registered before the /:id/* routes below since ':id' would otherwise greedily match "pay-multiple".
 Router::post('/public/maintenance/pay-multiple/order', function ($params, $body) {
-    if (!razorpay_is_configured()) {
+    if (!razorpay_should_show()) {
         throw new ApiError(400, 'Online payments are not configured yet. Please use the UPI QR code instead.');
     }
     $ids = array_values(array_filter(array_map('intval', $body['dueIds'] ?? [])));
@@ -210,8 +214,88 @@ Router::post('/public/maintenance/pay-multiple/verify', function ($params, $body
     Response::json(['ok' => true]);
 });
 
+// Unlike Razorpay's embedded JS checkout (order -> client-side signature -> our own /verify call),
+// SBIePay is a full-page redirect to SBI's hosted payment page - the browser navigates away and
+// SBI calls the /sbiepay/callback route below once payment completes, rather than our frontend
+// calling a verify endpoint with data it captured itself. sbiepay_create_order()'s real return
+// shape (redirect URL + form fields) and the callback's field names are still TODOs in
+// php/utils/sbiepay.php pending SBI's Merchant Integration Document - both throw/no-op until then.
+Router::post('/public/maintenance/pay-multiple/sbiepay/order', function ($params, $body) {
+    if (!sbiepay_should_show()) {
+        throw new ApiError(400, 'SBIePay is not configured yet. Please use Razorpay or the UPI QR code instead.');
+    }
+    $ids = array_values(array_filter(array_map('intval', $body['dueIds'] ?? [])));
+    $dues = public_maintenance_load_pending_dues($ids);
+
+    $remaining = array_sum(array_map(fn ($d) => (float) $d['amount_due'] - (float) $d['amount_paid'], $dues));
+    $amountPaise = (int) round($remaining * 100);
+    try {
+        $order = sbiepay_create_order($amountPaise, 'dues_' . $dues[0]['member_id'] . '_' . time(), [
+            'maintenance_payment_ids' => implode(',', array_map(fn ($d) => $d['id'], $dues)),
+            'member_id' => (string) $dues[0]['member_id'],
+        ]);
+        $orderId = $order['id'];
+        db_transaction(function () use ($dues, $orderId) {
+            foreach ($dues as $d) {
+                db_run('UPDATE maintenance_payments SET sbiepay_order_id = ? WHERE id = ?', [$orderId, $d['id']]);
+            }
+        });
+        Response::json($order);
+    } catch (Throwable $e) {
+        error_log('SBIePay order creation failed (public maintenance, multi): ' . $e->getMessage());
+        throw new ApiError(502, 'Could not reach SBIePay to create the order. Please try Razorpay or the UPI QR code instead.');
+    }
+});
+
+$sbiepayMaintenanceCallback = function ($params, $body, $query) {
+    $response = array_merge($query ?? [], $body ?? []);
+    try {
+        $settings = sbiepay_gateway_settings();
+        if (empty($settings['sbiepay_secret_key']) || !sbiepay_verify_signature($response, $settings['sbiepay_secret_key'])) {
+            throw new RuntimeException('SBIePay callback signature verification failed');
+        }
+        // TODO(sbiepay): confirm the actual field name SBI's callback uses for our order reference.
+        $orderId = $response['orderId'] ?? $response['order_id'] ?? null;
+        $dues = $orderId ? db_all('SELECT * FROM maintenance_payments WHERE sbiepay_order_id = ?', [$orderId]) : [];
+        if (!$dues) {
+            throw new RuntimeException('No matching dues found for SBIePay order ' . ($orderId ?? '(none)'));
+        }
+        $paymentId = $response['paymentId'] ?? $response['txnId'] ?? $orderId;
+        db_transaction(function () use ($dues, $paymentId) {
+            foreach ($dues as $d) {
+                db_run(
+                    "UPDATE maintenance_payments
+                     SET amount_paid = amount_due, status = 'paid', paid_date = CURDATE(), paid_at = NOW(), sbiepay_payment_id = ?,
+                         payment_mode = 'SBIePay', reference_no = ?
+                     WHERE id = ?",
+                    [$paymentId, $paymentId, $d['id']]
+                );
+            }
+        });
+        $updatedDues = array_map(fn ($d) => db_get('SELECT * FROM maintenance_payments WHERE id = ?', [$d['id']]), $dues);
+        foreach ($updatedDues as $updated) {
+            notify_admin_of_payment($updated);
+        }
+        notify_payment_whatsapp($updatedDues);
+        $member = db_get('SELECT name, site_no FROM members WHERE id = ?', [$dues[0]['member_id']]);
+        log_activity([
+            'actor' => 'public',
+            'action' => 'payment',
+            'entityType' => 'maintenance_payment',
+            'description' => ($member['name'] ?? 'Member') . ' (Site No ' . ($member['site_no'] ?? '-') . ') paid via SBIePay (due ids: ' . implode(', ', array_map(fn ($d) => $d['id'], $dues)) . ')',
+        ]);
+        header('Location: /pay-maintenance.html?sbiepay=paid');
+    } catch (Throwable $e) {
+        error_log('SBIePay callback failed (public maintenance): ' . $e->getMessage());
+        header('Location: /pay-maintenance.html?sbiepay=failed');
+    }
+    exit;
+};
+Router::get('/public/maintenance/sbiepay/callback', $sbiepayMaintenanceCallback);
+Router::post('/public/maintenance/sbiepay/callback', $sbiepayMaintenanceCallback);
+
 Router::post('/public/maintenance/:id/order', function ($params) {
-    if (!razorpay_is_configured()) {
+    if (!razorpay_should_show()) {
         throw new ApiError(400, 'Online payments are not configured yet. Please use the UPI QR code instead.');
     }
     $due = public_maintenance_load_pending_due((int) $params['id']);

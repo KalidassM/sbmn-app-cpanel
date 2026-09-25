@@ -49,9 +49,13 @@ Router::post('/public/donations', function ($params, $body) {
 Router::get('/public/donations/razorpay-config', function () {
     $settings = razorpay_gateway_settings();
     Response::json([
-        'configured' => !empty($settings['razorpay_key_id']) && !empty($settings['razorpay_key_secret']),
+        'configured' => razorpay_should_show(),
         'keyId' => $settings['razorpay_key_id'] ?: null,
     ]);
+});
+
+Router::get('/public/donations/sbiepay-config', function () {
+    Response::json(['configured' => sbiepay_should_show()]);
 });
 
 Router::get('/public/donations/qr', function ($params, $body, $query) {
@@ -63,7 +67,7 @@ Router::get('/public/donations/qr', function ($params, $body, $query) {
 });
 
 Router::post('/public/donations/:id/order', function ($params) {
-    if (!razorpay_is_configured()) {
+    if (!razorpay_should_show()) {
         throw new ApiError(400, 'Online payments are not configured yet. Please use the UPI QR code instead.');
     }
     $donation = public_donations_load_pending((int) $params['id']);
@@ -126,3 +130,62 @@ Router::post('/public/donations/:id/verify', function ($params, $body) {
     ]);
     Response::json(['ok' => true]);
 });
+
+// See the matching comment in php/routes/publicMaintenance.php - SBIePay is a full-page redirect
+// to SBI's hosted page, not an embedded JS checkout, so SBI calls the /sbiepay/callback route
+// below directly instead of our frontend calling a verify endpoint.
+Router::post('/public/donations/:id/sbiepay/order', function ($params) {
+    if (!sbiepay_should_show()) {
+        throw new ApiError(400, 'SBIePay is not configured yet. Please use Razorpay or the UPI QR code instead.');
+    }
+    $donation = public_donations_load_pending((int) $params['id']);
+
+    $amountPaise = (int) round((float) $donation['amount'] * 100);
+    try {
+        $order = sbiepay_create_order($amountPaise, "donation_{$donation['id']}", [
+            'donation_id' => (string) $donation['id'],
+            'donor_name' => $donation['donor_name'] ?: '',
+        ]);
+        db_run('UPDATE donations SET sbiepay_order_id = ? WHERE id = ?', [$order['id'], $donation['id']]);
+        Response::json($order);
+    } catch (Throwable $e) {
+        error_log('SBIePay order creation failed (public donation): ' . $e->getMessage());
+        throw new ApiError(502, 'Could not reach SBIePay to create the order. Please try Razorpay or the UPI QR code instead.');
+    }
+});
+
+$sbiepayDonationCallback = function ($params, $body, $query) {
+    $response = array_merge($query ?? [], $body ?? []);
+    try {
+        $settings = sbiepay_gateway_settings();
+        if (empty($settings['sbiepay_secret_key']) || !sbiepay_verify_signature($response, $settings['sbiepay_secret_key'])) {
+            throw new RuntimeException('SBIePay callback signature verification failed');
+        }
+        // TODO(sbiepay): confirm the actual field name SBI's callback uses for our order reference.
+        $orderId = $response['orderId'] ?? $response['order_id'] ?? null;
+        $donation = $orderId ? db_get('SELECT * FROM donations WHERE sbiepay_order_id = ?', [$orderId]) : null;
+        if (!$donation) {
+            throw new RuntimeException('No matching donation found for SBIePay order ' . ($orderId ?? '(none)'));
+        }
+        $paymentId = $response['paymentId'] ?? $response['txnId'] ?? $orderId;
+        db_run(
+            "UPDATE donations SET status = 'completed', sbiepay_payment_id = ?, donation_date = CURDATE() WHERE id = ?",
+            [$paymentId, $donation['id']]
+        );
+        notify_donation_whatsapp($donation);
+        log_activity([
+            'actor' => 'public',
+            'action' => 'payment',
+            'entityType' => 'donation',
+            'entityId' => $donation['id'],
+            'description' => "{$donation['donor_name']} paid ₹{$donation['amount']} donation via SBIePay" . (!empty($donation['purpose']) ? " for {$donation['purpose']}" : ''),
+        ]);
+        header('Location: /donate.html?sbiepay=paid');
+    } catch (Throwable $e) {
+        error_log('SBIePay callback failed (public donation): ' . $e->getMessage());
+        header('Location: /donate.html?sbiepay=failed');
+    }
+    exit;
+};
+Router::get('/public/donations/sbiepay/callback', $sbiepayDonationCallback);
+Router::post('/public/donations/sbiepay/callback', $sbiepayDonationCallback);
